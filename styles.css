@@ -1332,7 +1332,7 @@ body[data-card-scale="0.5"] .card {
     height: 20px;
     padding: 0 7px;
     border-radius: 7px;
-    font-size: 7px;
+    font-size: 13px;
   }
 
   .toolbar .dropdown {
@@ -1371,7 +1371,7 @@ body[data-card-scale="0.5"] .card {
   .dropdown-menu button {
     height: 18px;
     border-radius: 5px;
-    font-size: 6px;
+    font-size: 10px;
   }
 
   #search-clear {
