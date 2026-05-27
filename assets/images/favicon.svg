@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="card" x1="16" y1="6" x2="48" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8faff"/>
+      <stop offset="0.45" stop-color="#8fb2ff"/>
+      <stop offset="1" stop-color="#ff8ccd"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="22" y1="10" x2="44" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#111116"/>
+  <rect x="16" y="7" width="32" height="50" rx="5" fill="url(#card)" transform="rotate(7 32 32)"/>
+  <rect x="19" y="10" width="26" height="44" rx="4" fill="none" stroke="#111116" stroke-opacity="0.48" stroke-width="2" transform="rotate(7 32 32)"/>
+  <circle cx="32" cy="32" r="13" fill="#f8faff" stroke="#111116" stroke-width="3"/>
+  <path d="M20 32h24" stroke="#111116" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="5" fill="#111116"/>
+  <circle cx="32" cy="32" r="2.4" fill="#f8faff"/>
+  <path d="M24 14c6 1 12 2 19 5" stroke="url(#shine)" stroke-width="4" stroke-linecap="round" transform="rotate(7 32 32)"/>
+</svg>

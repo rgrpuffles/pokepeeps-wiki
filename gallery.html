@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pokepeeps</title>
+  <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=20260527-gallery-grid">
+</head>
+<body class="gallery-page">
+<div class="page-container">
+  <div class="page-frame">
+    <div class="toolbar">
+      <div class="toolbar-frame">
+        <div class="toolbar-brand">
+          <div class="toolbar-title" id="toolbar-title" aria-label="Advanced settings">
+            <strong>Pokepeeps</strong>
+            <span class="toolbar-subtitle">Field Terminal Archive</span>
+          </div>
+        </div>
+
+        <div class="toolbar-rows">
+          <div class="toolbar-top">
+            <div class="toolbar-top-controls">
+            </div>
+          </div>
+
+          <div class="toolbar-middle">
+            <div class="toolbar-filter-row">
+              <span class="toolbar-row-label">Filter</span>
+              <div class="dropdown" data-dropdown="set">
+                <button id="set-toggle" class="dropdown-toggle" type="button" aria-haspopup="menu" aria-expanded="false">
+                  <span class="dropdown-label">Set</span>
+                  <span class="dropdown-value" id="set-value">All</span>
+                </button>
+                <div class="dropdown-menu" id="set-menu" role="menu" aria-label="Set"></div>
+              </div>
+
+              <div class="dropdown" data-dropdown="artist">
+                <button id="artist-toggle" class="dropdown-toggle" type="button" aria-haspopup="menu" aria-expanded="false">
+                  <span class="dropdown-label">Artist</span>
+                  <span class="dropdown-value" id="artist-value">All</span>
+                </button>
+                <div class="dropdown-menu" id="artist-menu" role="menu" aria-label="Artist">
+                  <button type="button" data-artist="all">All</button>
+                  <button type="button" data-artist="base">Base PP</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="toolbar-search-row">
+              <div class="search-field">
+                <input id="search-input" type="search" placeholder="Search cards...">
+                <button id="search-clear" type="button" hidden>Clear</button>
+              </div>
+              <span id="card-count">0 cards</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="grid">
+      <div class="grid-frame">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="theatre-modal" class="theatre-modal" hidden>
+  <div class="theatre-modal-backdrop" data-theatre-close></div>
+  <div class="theatre-modal-panel" role="dialog" aria-modal="true" aria-label="Card viewer">
+    <div id="theatre-modal-content"></div>
+  </div>
+</div>
+
+<div id="card-size-modal" class="card-size-modal" hidden>
+  <div class="card-size-modal-backdrop" data-card-size-close></div>
+  <div class="card-size-modal-panel" role="dialog" aria-modal="true" aria-labelledby="card-size-modal-title">
+    <div class="card-size-modal-title" id="card-size-modal-title">Card sizing</div>
+    <div class="card-size-modal-options" id="card-size-options"></div>
+    <button type="button" class="card-size-modal-close" data-card-size-close>Close</button>
+  </div>
+</div>
+
+<div id="sort-modal" class="card-size-modal" hidden>
+  <div class="card-size-modal-backdrop" data-sort-close></div>
+  <div class="card-size-modal-panel" role="dialog" aria-modal="true" aria-labelledby="sort-modal-title">
+    <div class="card-size-modal-title" id="sort-modal-title">Sort</div>
+    <div class="card-size-modal-options" id="sort-options"></div>
+    <button type="button" class="card-size-modal-close" data-sort-close>Close</button>
+  </div>
+</div>
+
+<div id="card-menu" class="card-menu" hidden></div>
+<div id="advanced-menu" class="card-menu" hidden></div>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+<script type="module">
+import {
+  ALL_SETS_VALUE,
+  DOTTED_FRAME_FILE,
+  EXPORT_HEIGHT,
+  EXPORT_SCALE,
+  EXPORT_WIDTH,
+  FRAME_FILE,
+  ENV,
+  GITHUB_PAGES_HIDDEN_SETS,
+  SIZE_LABELS,
+  SIZE_OPTIONS,
+  SORT_LABELS,
+  STORAGE_KEY,
+} from './assets/js/gallery-config.js';
+import { loadGalleryData } from './assets/js/gallery-data.js';
+
+document.documentElement.dataset.env = ENV;
+
+let currentFrame = FRAME_FILE;
+let sortMode = 'type';
+let currentCardRows = 'default';
+let setFilter = ALL_SETS_VALUE;
+let artistFilter = 'all';
+let searchText = '';
+let randomSeed = Math.random();
+let imageItems = [];
+let pokemonNameToDex = {};
+let setOptions = [];
+let artistOptions = [];
+let theatreIndex = 0;
+let theatreItems = [];
+let openDropdown = null;
+const GALLERY_BASE_CARD_WIDTH = 265;
+const GALLERY_CARD_FRAME_EXTRA = 12;
+const MOBILE_LAYOUT_QUERY = '(max-width: 760px)';
+
+function isMobileLayout() {
+  return window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+}
+const GALLERY_DYNAMIC_COLUMN_BREAKPOINT = 960;
+const GALLERY_AUTO_COLUMN_SNAP_FACTOR = 0.9;
+
+function saveSettings() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    setFilter,
+    artistFilter
+  }));
+}
+
+function normalizeSortMode(mode) {
+  if (mode === 'name-asc') return 'type';
+  if (mode === 'name-desc') return 'type';
+  if (mode === 'dex-desc') return 'dex-asc';
+  if (mode === 'type') return 'type';
+  if (Object.prototype.hasOwnProperty.call(SORT_LABELS, mode)) return mode;
+  return 'type';
+}
+
+function loadSettings() {
+  try {
+    const settings = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!settings) return;
+
+    setFilter = settings.setFilter || ALL_SETS_VALUE;
+    artistFilter = settings.artistFilter === 'guest' ? 'all' : (settings.artistFilter || 'all');
+  } catch {}
+}
+
+function getArtistLabel(value) {
+  if (value === 'all') return 'All';
+  if (value === 'base') return 'Base PP';
+  return value;
+}
+
+function isBaseArtistTag(value) {
+  return normalizeTagToken(value) === 'BASE PP';
+}
+
+function updateSearchClearButton() {
+  const clearButton = document.getElementById('search-clear');
+  if (!clearButton) return;
+  clearButton.hidden = !searchText.trim();
+}
+
+function applyGalleryLayoutSettings() {
+  document.body.dataset.cardScale = '1';
+  document.documentElement.style.setProperty('--card-scale', '1');
+}
+
+function updateGalleryLayout() {
+  const grid = document.getElementById('grid');
+  if (!grid) return;
+
+  const gapRaw = getComputedStyle(document.documentElement).getPropertyValue('--grid-gap');
+  const gap = Number.parseFloat(gapRaw) || 20;
+  const fixedColumns = currentCardRows === 'default' ? null : Number.parseInt(currentCardRows, 10);
+  const baseCardWidth = GALLERY_BASE_CARD_WIDTH + GALLERY_CARD_FRAME_EXTRA;
+  const autoCardWidth = Math.max(1, Math.floor(baseCardWidth * GALLERY_AUTO_COLUMN_SNAP_FACTOR));
+  const isWideViewport = window.innerWidth >= GALLERY_DYNAMIC_COLUMN_BREAKPOINT;
+
+  grid.querySelectorAll('.grid-frame, .grid-section-items').forEach(container => {
+    const style = getComputedStyle(container);
+    const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(style.paddingRight) || 0;
+    const availableWidth = Math.max(0, container.clientWidth - paddingLeft - paddingRight);
+    const itemCount = Number.parseInt(container.dataset.itemCount || '', 10) || 0;
+
+    if (!availableWidth) {
+      container.style.gridTemplateColumns = `repeat(1, ${baseCardWidth}px)`;
+      container.style.setProperty('--gallery-columns', '1');
+      container.style.setProperty('--gallery-column-width', `${baseCardWidth}px`);
+      return;
+    }
+
+    const fitAtOneX = Math.max(0, Math.floor((availableWidth + gap) / (autoCardWidth + gap)));
+    const autoColumns = isWideViewport ? Math.max(2, fitAtOneX + 1) : Math.max(2, fitAtOneX);
+    const columns = fixedColumns || autoColumns;
+    const centeredColumns = itemCount > 0 ? Math.min(columns, itemCount) : columns;
+    const usableWidth = Math.max(1, availableWidth - (gap * (centeredColumns - 1)));
+    const trackWidth = fixedColumns
+      ? Math.max(1, Math.floor(usableWidth / centeredColumns))
+      : Math.max(1, Math.min(baseCardWidth, Math.floor(usableWidth / centeredColumns)));
+
+    container.style.gridTemplateColumns = `repeat(${centeredColumns}, ${trackWidth}px)`;
+    container.style.setProperty('--gallery-columns', String(centeredColumns));
+    container.style.setProperty('--gallery-column-width', `${trackWidth}px`);
+  });
+}
+
+function getFilename(path) {
+  return decodeURIComponent(path.split('/').pop()).toLowerCase();
+}
+
+function getDisplayName(path) {
+  return decodeURIComponent(path.split('/').pop());
+}
+
+function getSetInfo(path) {
+  const folder = decodeURIComponent(path.split('/').filter(Boolean)[0] || '');
+  const match = folder.match(/^SET_(\d+(?:\.\d+)?)_(.+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const number = Number(match[1]);
+  const code = match[2];
+  const labelNumber = Number.isInteger(number) ? `${number}.` : `${match[1]}`;
+
+  return {
+    key: folder,
+    number,
+    code,
+    label: `${labelNumber} ${code}`
+  };
+}
+
+function normalizeTagToken(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[-\s]+/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function isAceTrainerToken(value) {
+  return normalizeTagToken(value) === 'ACE TRAINER';
+}
+
+function isArtTypeToken(value) {
+  const normalized = normalizeTagToken(value);
+  return normalized === 'STANDARD' || normalized === 'FULL ART';
+}
+
+function isRelationToken(value) {
+  const normalized = normalizeTagToken(value);
+  return normalized === 'SET' || normalized === 'PROMO' || normalized === 'LIMITED';
+}
+
+function normalizeArtType(value) {
+  const normalized = normalizeTagToken(value);
+  if (normalized === 'STANDARD') return 'STANDARD';
+  if (normalized === 'FULL ART') return 'FULL ART';
+  return '';
+}
+
+function parseTags(path) {
+  const setInfo = getSetInfo(path);
+  const rawName = decodeURIComponent(path.split('/').pop() || '');
+  const baseName = rawName.replace(/\.[^.]+$/, '');
+  const tags = baseName.split('_').filter(Boolean);
+  const isAceTrainer = isAceTrainerToken(tags[1] || '');
+
+  let cardName = '';
+  let guestArtist = '';
+  let artType = '';
+  let setRelation = '';
+  let pokedex = '';
+  let dexVariant = 0;
+
+  if (isAceTrainer) {
+    if (tags.length < 6) {
+      return null;
+    }
+
+    const artTypeIndex = tags.findIndex((tag, index) => index >= 2 && isArtTypeToken(tag));
+    if (artTypeIndex < 0 || artTypeIndex < 3 || artTypeIndex + 2 >= tags.length) {
+      return null;
+    }
+
+    cardName = tags.slice(2, artTypeIndex).join('_');
+    if (!cardName) {
+      return null;
+    }
+
+    artType = normalizeArtType(tags[artTypeIndex]);
+    setRelation = normalizeTagToken(tags[artTypeIndex + 1]);
+    if (!isRelationToken(setRelation)) {
+      return null;
+    }
+
+    guestArtist = tags.slice(artTypeIndex + 2).join('_');
+    if (!guestArtist) {
+      return null;
+    }
+  } else {
+    const pokedexTag = tags[1] || '';
+    const pokedexMatch = pokedexTag.match(/^(\d+)(?:-(\d+))?$/);
+    if (!pokedexMatch) {
+      return null;
+    }
+
+    dexVariant = pokedexMatch ? Number(pokedexMatch[2] || 0) : 0;
+    pokedex = pokedexMatch ? pokedexMatch[1] : pokedexTag;
+
+    if (tags.length < 6) {
+      return null;
+    }
+
+    const artTypeIndex = tags.findIndex((tag, index) => index >= 2 && isArtTypeToken(tag));
+    if (artTypeIndex < 0 || artTypeIndex < 3 || artTypeIndex + 2 >= tags.length) {
+      return null;
+    }
+
+    cardName = tags.slice(2, artTypeIndex).join('_');
+    if (!cardName) {
+      return null;
+    }
+
+    artType = normalizeArtType(tags[artTypeIndex]);
+    setRelation = normalizeTagToken(tags[artTypeIndex + 1]);
+    if (!isRelationToken(setRelation)) {
+      return null;
+    }
+
+    guestArtist = tags.slice(artTypeIndex + 2).join('_');
+    if (!guestArtist) {
+      return null;
+    }
+  }
+
+  return {
+    rawName,
+    baseName,
+    tags,
+    setKey: setInfo?.key || '',
+    setNumber: setInfo?.number || '',
+    setCode: setInfo?.code || '',
+    setLabel: setInfo?.label || 'All',
+    isAceTrainer,
+    isFullArt: artType === 'FULL ART',
+    artType,
+    setRelation,
+    guestArtist,
+    cardName,
+    pokedex,
+    dexVariant
+  };
+}
+
+function normalizePokemonQuery(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function getPokemonDexesForQuery(query) {
+  const normalized = normalizePokemonQuery(query);
+  if (!normalized) return [];
+
+  if (Object.prototype.hasOwnProperty.call(pokemonNameToDex, normalized)) {
+    return Array.isArray(pokemonNameToDex[normalized])
+      ? pokemonNameToDex[normalized]
+      : [pokemonNameToDex[normalized]];
+  }
+
+  const matches = Object.entries(pokemonNameToDex)
+    .flatMap(([name, dex]) => {
+      const dexes = Array.isArray(dex) ? dex : [dex];
+
+      return dexes.map(value => ({
+        name,
+        dex: value,
+        score:
+          name === normalized ? 3 :
+          name.startsWith(normalized) ? 2 :
+          name.includes(normalized) ? 1 :
+          0
+      }));
+    })
+    .filter(entry => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.name.length - b.name.length)
+    .map(entry => entry.dex);
+
+  return Array.from(new Set(matches));
+}
+
+function seededRandom(str) {
+  let hash = 0;
+  const input = str + randomSeed;
+
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) - hash) + input.charCodeAt(i);
+    hash |= 0;
+  }
+
+  return Math.abs(Math.sin(hash) * 10000);
+}
+
+function getActiveFrame() {
+  return currentFrame;
+}
+
+function getSortLabel(mode) {
+  return SORT_LABELS[mode] || SORT_LABELS.type;
+}
+
+function getSizeLabel(size) {
+  return SIZE_LABELS[size] || SIZE_LABELS.default;
+}
+
+function normalizeSize(size) {
+  return Object.prototype.hasOwnProperty.call(SIZE_LABELS, size) ? size : 'default';
+}
+
+function compareSetOrder(a, b) {
+  const setNumberA = Number.isFinite(a.setNumber) ? a.setNumber : Number.MAX_SAFE_INTEGER;
+  const setNumberB = Number.isFinite(b.setNumber) ? b.setNumber : Number.MAX_SAFE_INTEGER;
+
+  if (setNumberA !== setNumberB) {
+    return setNumberA - setNumberB;
+  }
+
+  return String(a.setCode || '').localeCompare(String(b.setCode || ''), undefined, {
+    numeric: true,
+    sensitivity: 'base'
+  });
+}
+
+function compareNameOrder(a, b) {
+  return a.name.localeCompare(b.name, undefined, {
+    numeric: true,
+    sensitivity: 'base'
+  });
+}
+
+function compareDexOrder(a, b) {
+  const dexA = Number.isFinite(a.dexNumber) ? a.dexNumber : Number.MAX_SAFE_INTEGER;
+  const dexB = Number.isFinite(b.dexNumber) ? b.dexNumber : Number.MAX_SAFE_INTEGER;
+  const dexDiff = dexA - dexB;
+  if (dexDiff) return dexDiff;
+
+  const variantA = Number.isFinite(a.dexVariant) ? a.dexVariant : Number.MAX_SAFE_INTEGER;
+  const variantB = Number.isFinite(b.dexVariant) ? b.dexVariant : Number.MAX_SAFE_INTEGER;
+  return variantA - variantB;
+}
+
+function compareTypeOrder(a, b) {
+  const rank = item => {
+    if (item.isAceTrainer) return 2;
+    if (item.isFullArt) return 1;
+    return 0;
+  };
+
+  const rankDiff = rank(a) - rank(b);
+  if (rankDiff) return rankDiff;
+
+  const dexDiff = compareDexOrder(a, b);
+  if (dexDiff) return dexDiff;
+
+  return compareNameOrder(a, b);
+}
+
+function getTypeSortSection(item) {
+  if (item.isAceTrainer) return 'ace-trainer';
+  if (item.isFullArt) return 'full-art';
+  return 'standard';
+}
+
+function getTypeSortSectionLabel(key) {
+  switch (key) {
+    case 'standard':
+      return 'Standard';
+    case 'full-art':
+      return 'Full art';
+    case 'ace-trainer':
+      return 'Ace trainer';
+    default:
+      return '';
+  }
+}
+
+function measureTextWidth(text, font) {
+  const canvas = measureTextWidth.canvas || (measureTextWidth.canvas = document.createElement('canvas'));
+  const context = canvas.getContext('2d');
+  if (!context) return 0;
+  context.font = font;
+  return context.measureText(text).width;
+}
+
+function updateDropdownWidths() {
+  document.querySelectorAll('.dropdown').forEach(wrapper => {
+    const toggle = wrapper.querySelector('.dropdown-toggle');
+    const menu = wrapper.querySelector('.dropdown-menu');
+    if (!toggle || !menu) return;
+
+    const style = window.getComputedStyle(toggle);
+    const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+    const arrowSpace = 38;
+
+    const labelText = Array.from(toggle.querySelectorAll('.dropdown-label, .dropdown-value'))
+      .map(node => node.textContent?.trim() || '')
+      .filter(Boolean)
+      .join(' ');
+
+    const menuItems = Array.from(menu.querySelectorAll('button'))
+      .map(button => button.textContent?.trim() || '')
+      .filter(Boolean);
+
+    const widestText = Math.max(
+      measureTextWidth(labelText, font),
+      ...menuItems.map(text => measureTextWidth(text, font))
+    );
+
+    const width = Math.ceil(widestText + horizontalPadding + arrowSpace);
+    wrapper.style.setProperty('--dropdown-width', `${width}px`);
+  });
+}
+
+function isRandomSort() {
+  return sortMode === 'random';
+}
+
+function setSortMode(mode) {
+  sortMode = mode;
+
+  if (mode === 'random') {
+    randomSeed = Math.random();
+  }
+
+  renderImages();
+}
+
+function setSize(size) {
+  currentCardRows = normalizeSize(size);
+  renderImages();
+}
+
+function openMenu(name) {
+  if (openDropdown && openDropdown !== name) {
+    closeMenu(openDropdown);
+  }
+
+  const wrapper = document.querySelector(`[data-dropdown="${name}"]`);
+  if (!wrapper) return;
+
+  wrapper.classList.add('open');
+  wrapper.querySelector('.dropdown-toggle')?.setAttribute('aria-expanded', 'true');
+  openDropdown = name;
+}
+
+function closeMenu(name) {
+  const wrapper = document.querySelector(`[data-dropdown="${name}"]`);
+  if (!wrapper) return;
+
+  wrapper.classList.remove('open');
+  wrapper.querySelector('.dropdown-toggle')?.setAttribute('aria-expanded', 'false');
+
+  if (openDropdown === name) {
+    openDropdown = null;
+  }
+}
+
+function toggleMenu(name) {
+  const wrapper = document.querySelector(`[data-dropdown="${name}"]`);
+  if (!wrapper) return;
+
+  if (wrapper.classList.contains('open')) {
+    closeMenu(name);
+  } else {
+    openMenu(name);
+  }
+}
+
+function closeAllMenus() {
+  document.querySelectorAll('.dropdown.open').forEach(dropdown => {
+    dropdown.classList.remove('open');
+    dropdown.querySelector('.dropdown-toggle')?.setAttribute('aria-expanded', 'false');
+  });
+
+  closeCardMenu();
+  closeAdvancedMenu();
+  openDropdown = null;
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function getFilteredImages() {
+  const pokemonDexes = getPokemonDexesForQuery(searchText);
+  const search = searchText.toLowerCase();
+  const pokemonDexSet = new Set(pokemonDexes);
+
+  const filtered = imageItems.filter(item =>
+    (
+      item.name.includes(search) ||
+      (pokemonDexSet.size > 0 && pokemonDexSet.has(item.dexNumber))
+    ) &&
+    (setFilter === ALL_SETS_VALUE || item.setKey === setFilter) &&
+    (
+      artistFilter === 'all' ||
+      (artistFilter === 'base' && isBaseArtistTag(item.guestArtist)) ||
+      (artistFilter !== 'all' && artistFilter !== 'base' && item.guestArtist === artistFilter)
+    )
+  );
+
+  if (isRandomSort()) {
+    return filtered.sort(
+      (a, b) => seededRandom(a.name) - seededRandom(b.name)
+    );
+  }
+
+  return filtered.sort((a, b) => {
+    switch (sortMode) {
+      case 'date-asc':
+        return a.modified - b.modified || compareSetOrder(a, b) || compareNameOrder(a, b);
+      case 'date-desc':
+        return b.modified - a.modified || compareSetOrder(a, b) || compareNameOrder(a, b);
+      case 'dex-asc':
+        return compareDexOrder(a, b) || compareSetOrder(a, b) || compareNameOrder(a, b);
+      case 'type':
+        return compareTypeOrder(a, b);
+      default:
+        return compareNameOrder(a, b);
+    }
+  });
+}
+
+function updateToolbarLabels(count) {
+  document.getElementById('card-count').textContent =
+    `${count} / ${imageItems.length} cards`;
+
+  document.getElementById('set-value').textContent = setFilter === ALL_SETS_VALUE
+    ? 'All'
+    : (setOptions.find(option => option.value === setFilter)?.label || 'All');
+
+  document.getElementById('artist-value').textContent = getArtistLabel(artistFilter);
+  updateSearchClearButton();
+
+  document.querySelectorAll('[data-sort]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.sort === sortMode);
+  });
+
+  document.querySelectorAll('[data-set]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.set === setFilter);
+  });
+  document.querySelectorAll('[data-artist]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.artist === artistFilter);
+  });
+}
+
+function markCardLoaded(card) {
+  card.classList.remove('is-loading');
+  card.removeAttribute('aria-busy');
+}
+
+function createCardElement(item) {
+  const card = document.createElement('div');
+  card.className = 'card is-loading';
+  card.setAttribute('aria-busy', 'true');
+
+  const placeholder = document.createElement('div');
+  placeholder.className = 'card-placeholder';
+
+  const img = document.createElement('img');
+  img.alt = item.displayName;
+  img.className = 'main';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.addEventListener('load', () => markCardLoaded(card), { once: true });
+  img.addEventListener('error', () => markCardLoaded(card), { once: true });
+  img.src = item.src;
+
+  if (img.complete) {
+    markCardLoaded(card);
+  }
+
+  const overlay = document.createElement('img');
+  overlay.src = getActiveFrame();
+  overlay.className = 'overlay';
+
+  const frame = document.createElement('div');
+  frame.className = 'card-frame';
+
+  frame.appendChild(overlay);
+
+  const sheen = document.createElement('div');
+  sheen.className = 'card-sheen';
+
+  card.appendChild(placeholder);
+  card.appendChild(img);
+  card.appendChild(frame);
+  card.appendChild(sheen);
+
+  return card;
+}
+
+function createTheatreCardElement(item) {
+  const card = document.createElement('div');
+  card.className = 'card theatre-card is-loading';
+  card.setAttribute('aria-busy', 'true');
+
+  const img = document.createElement('img');
+  img.alt = item.displayName;
+  img.className = 'main';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.addEventListener('load', () => markCardLoaded(card), { once: true });
+  img.addEventListener('error', () => markCardLoaded(card), { once: true });
+  img.src = item.src;
+
+  if (img.complete) {
+    markCardLoaded(card);
+  }
+
+  const overlay = document.createElement('img');
+  overlay.src = getActiveFrame();
+  overlay.className = 'overlay';
+
+  const frame = document.createElement('div');
+  frame.className = 'card-frame';
+  frame.appendChild(overlay);
+
+  const sheen = document.createElement('div');
+  sheen.className = 'card-sheen';
+
+  card.appendChild(img);
+  card.appendChild(frame);
+  card.appendChild(sheen);
+
+  card._mainImg = img;
+  card._placeholder = null;
+
+  return card;
+}
+
+function buildSetOptions() {
+  const optionsByKey = new Map();
+  const hideSomeSets = ENV === 'public';
+
+  imageItems.forEach(item => {
+    if (!item.setKey) return;
+    if (hideSomeSets && GITHUB_PAGES_HIDDEN_SETS.has(item.setKey)) return;
+
+    optionsByKey.set(item.setKey, {
+      value: item.setKey,
+      label: item.setLabel,
+      number: item.setNumber,
+      code: item.setCode
+    });
+  });
+
+  setOptions = Array.from(optionsByKey.values()).sort((a, b) =>
+    a.number - b.number || a.code.localeCompare(b.code, undefined, {
+      numeric: true,
+      sensitivity: 'base'
+    })
+  );
+}
+
+function buildArtistOptions() {
+  const scopedItems = imageItems.filter(item =>
+    setFilter === ALL_SETS_VALUE || item.setKey === setFilter
+  );
+
+  const hasGuestArtists = scopedItems.some(item =>
+    !isBaseArtistTag(item.guestArtist) && (ENV !== 'public' || !GITHUB_PAGES_HIDDEN_SETS.has(item.setKey))
+  );
+
+  const guestNames = Array.from(new Set(
+    scopedItems
+      .filter(item => ENV !== 'public' || !GITHUB_PAGES_HIDDEN_SETS.has(item.setKey))
+      .filter(item => !isBaseArtistTag(item.guestArtist))
+      .map(item => item.guestArtist)
+      .filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, undefined, {
+    numeric: true,
+    sensitivity: 'base'
+  }));
+
+  artistOptions = [
+    { value: 'all', label: 'All' },
+    ...(hasGuestArtists ? [{ value: 'base', label: 'Base PP' }] : []),
+    ...guestNames.map(name => ({ value: name, label: name }))
+  ];
+}
+
+function renderSetMenu() {
+  const menu = document.getElementById('set-menu');
+  menu.innerHTML = '';
+
+  const allButton = document.createElement('button');
+  allButton.type = 'button';
+  allButton.dataset.set = ALL_SETS_VALUE;
+  allButton.textContent = 'All';
+  menu.appendChild(allButton);
+
+  setOptions.forEach(option => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.set = option.value;
+    button.textContent = option.label;
+    menu.appendChild(button);
+  });
+
+  updateDropdownWidths();
+}
+
+function renderArtistMenu() {
+  const menu = document.getElementById('artist-menu');
+  menu.innerHTML = '';
+
+  artistOptions.forEach(option => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.artist = option.value;
+    button.textContent = option.label;
+    menu.appendChild(button);
+  });
+
+  updateDropdownWidths();
+}
+
+function isValidSetFilter(value) {
+  return value === ALL_SETS_VALUE || setOptions.some(option => option.value === value);
+}
+
+function setSetFilter(value) {
+  setFilter = value;
+  buildArtistOptions();
+  if (!artistOptions.some(option => option.value === artistFilter)) {
+    artistFilter = 'all';
+  }
+  renderArtistMenu();
+  renderImages();
+}
+
+function setArtistFilter(value) {
+  artistFilter = value;
+  renderImages();
+}
+
+function renderGrid(items) {
+  const grid = document.getElementById('grid');
+  const gridFrame = document.querySelector('.grid-frame');
+  const indexedItems = items.map((item, index) => ({ ...item, filteredIndex: index }));
+
+  grid.hidden = false;
+  gridFrame.innerHTML = '';
+
+  if (!items.length) {
+    grid.classList.remove('type-sorted');
+    gridFrame.dataset.itemCount = '0';
+    const empty = document.createElement('div');
+    empty.className = 'theatre-empty';
+    empty.textContent = "No cards match this search.";
+    gridFrame.appendChild(empty);
+    updateGalleryLayout();
+    return;
+  }
+
+  if (sortMode === 'type') {
+    grid.classList.add('type-sorted');
+    const groupedItems = [
+      ['standard', indexedItems.filter(item => getTypeSortSection(item) === 'standard')],
+      ['full-art', indexedItems.filter(item => getTypeSortSection(item) === 'full-art')],
+      ['ace-trainer', indexedItems.filter(item => getTypeSortSection(item) === 'ace-trainer')]
+    ];
+
+    groupedItems.forEach(([sectionKey, sectionItems]) => {
+      if (!sectionItems.length) return;
+
+      const section = document.createElement('section');
+      section.className = `grid-section grid-section-${sectionKey}`;
+
+      const heading = document.createElement('h2');
+      heading.className = 'grid-section-title';
+      heading.textContent = getTypeSortSectionLabel(sectionKey);
+
+      const sectionGrid = document.createElement('div');
+      sectionGrid.className = 'grid-section-items';
+      sectionGrid.dataset.itemCount = String(sectionItems.length);
+
+      sectionItems.forEach(item => {
+        const wrap = document.createElement('div');
+        wrap.className = 'card-wrap';
+        wrap.tabIndex = 0;
+        wrap.setAttribute('role', 'button');
+        wrap.setAttribute('aria-label', `Open ${item.displayName}`);
+        wrap.dataset.index = String(item.filteredIndex);
+
+        const card = createCardElement(item);
+
+        wrap.addEventListener('click', event => {
+          if (isMobileLayout()) {
+            event.preventDefault();
+            event.stopPropagation();
+            openCardMenu(item, event.clientX, event.clientY, indexedItems);
+            return;
+          }
+          openTheatreModal(indexedItems, item.filteredIndex);
+        });
+        wrap.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            if (isMobileLayout()) {
+              openCardMenu(item, event.clientX, event.clientY, indexedItems);
+            } else {
+              openTheatreModal(indexedItems, item.filteredIndex);
+            }
+          }
+        });
+        wrap.addEventListener('contextmenu', event => {
+          event.preventDefault();
+          openCardMenu(item, event.clientX, event.clientY, indexedItems);
+        });
+
+        wrap.appendChild(card);
+
+        sectionGrid.appendChild(wrap);
+      });
+
+      section.appendChild(heading);
+      section.appendChild(sectionGrid);
+      gridFrame.appendChild(section);
+    });
+
+    updateGalleryLayout();
+    return;
+  }
+
+  grid.classList.remove('type-sorted');
+
+  indexedItems.forEach(item => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card-wrap';
+    wrap.tabIndex = 0;
+    wrap.setAttribute('role', 'button');
+    wrap.setAttribute('aria-label', `Open ${item.displayName}`);
+    wrap.dataset.index = String(item.filteredIndex);
+
+    const card = createCardElement(item);
+
+    wrap.addEventListener('click', event => {
+      if (isMobileLayout()) {
+        event.preventDefault();
+        event.stopPropagation();
+        openCardMenu(item, event.clientX, event.clientY, indexedItems);
+        return;
+      }
+      openTheatreModal(indexedItems, item.filteredIndex);
+    });
+    wrap.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (isMobileLayout()) {
+          openCardMenu(item, event.clientX, event.clientY, indexedItems);
+        } else {
+          openTheatreModal(indexedItems, item.filteredIndex);
+        }
+      }
+    });
+    wrap.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      openCardMenu(item, event.clientX, event.clientY, indexedItems);
+    });
+
+    wrap.appendChild(card);
+
+    gridFrame.appendChild(wrap);
+  });
+
+  gridFrame.dataset.itemCount = String(indexedItems.length);
+
+  updateGalleryLayout();
+}
+
+function closeTheatreModal() {
+  const theatreModal = document.getElementById('theatre-modal');
+  const modalContent = document.getElementById('theatre-modal-content');
+  theatreModal.hidden = true;
+  modalContent.innerHTML = '';
+  theatreItems = [];
+  theatreIndex = 0;
+  document.body.style.overflow = '';
+}
+
+function openTheatreModal(items, index) {
+  closeAllMenus();
+  closeCardMenu();
+  theatreItems = items.slice();
+  theatreIndex = Math.max(0, Math.min(index, theatreItems.length - 1));
+  renderTheatreModal();
+  const theatreModal = document.getElementById('theatre-modal');
+  theatreModal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function renderTheatreModal() {
+  const modalContent = document.getElementById('theatre-modal-content');
+  modalContent.innerHTML = '';
+
+  if (!theatreItems.length) {
+    const empty = document.createElement('div');
+    empty.className = 'theatre-empty';
+    empty.textContent = "No cards match this search.";
+    modalContent.appendChild(empty);
+    return;
+  }
+
+  theatreIndex = Math.max(0, Math.min(theatreIndex, theatreItems.length - 1));
+
+  const shell = document.createElement('div');
+  shell.className = 'theatre-shell';
+
+  const header = document.createElement('div');
+  header.className = 'theatre-header';
+
+  const headerLeft = document.createElement('div');
+  headerLeft.className = 'theatre-header-left';
+
+  const headerCenter = document.createElement('div');
+  headerCenter.className = 'theatre-header-center';
+
+  const headerRight = document.createElement('div');
+  headerRight.className = 'theatre-header-right';
+
+  const closeButton = document.createElement('button');
+  closeButton.id = 'theatre-modal-close';
+  closeButton.className = 'theatre-modal-close';
+  closeButton.type = 'button';
+  closeButton.textContent = 'Close';
+  closeButton.addEventListener('click', closeTheatreModal);
+
+  const headerName = document.createElement('span');
+  headerName.className = 'theatre-header-name';
+  headerName.textContent = getTheatreTitle(theatreItems[theatreIndex]);
+
+  const headerSubtitle = document.createElement('span');
+  headerSubtitle.className = 'theatre-header-subtitle';
+  headerSubtitle.textContent = getTheatreSubtitle(theatreItems[theatreIndex]);
+
+  headerCenter.appendChild(headerName);
+  headerCenter.appendChild(headerSubtitle);
+  header.appendChild(headerLeft);
+  header.appendChild(headerCenter);
+  headerRight.appendChild(closeButton);
+  header.appendChild(headerRight);
+
+  const stage = document.createElement('div');
+  stage.className = 'theatre-stage';
+
+  const stagePrevBtn = document.createElement('button');
+  stagePrevBtn.className = 'theatre-nav theatre-nav-stage';
+  stagePrevBtn.type = 'button';
+  stagePrevBtn.textContent = '‹';
+  stagePrevBtn.setAttribute('aria-label', 'Previous photo');
+
+  const stageNextBtn = document.createElement('button');
+  stageNextBtn.className = 'theatre-nav theatre-nav-stage';
+  stageNextBtn.type = 'button';
+  stageNextBtn.textContent = '›';
+  stageNextBtn.setAttribute('aria-label', 'Next photo');
+
+  const card = createTheatreCardElement(theatreItems[theatreIndex]);
+  card.classList.add('theatre-card');
+
+  stagePrevBtn.disabled = theatreIndex === 0;
+  stageNextBtn.disabled = theatreIndex === theatreItems.length - 1;
+
+  function syncSelection(nextIndex) {
+    const index = Math.max(0, Math.min(nextIndex, theatreItems.length - 1));
+    theatreIndex = index;
+
+    const nextItem = theatreItems[index];
+    const mainImg = card._mainImg || card.querySelector('img.main');
+    if (mainImg) {
+      card.classList.add('is-loading');
+      card.setAttribute('aria-busy', 'true');
+      mainImg.addEventListener('load', () => markCardLoaded(card), { once: true });
+      mainImg.addEventListener('error', () => markCardLoaded(card), { once: true });
+      mainImg.src = nextItem.src;
+
+      if (mainImg.complete) {
+        markCardLoaded(card);
+      }
+    }
+    headerName.textContent = getTheatreTitle(nextItem);
+    headerSubtitle.textContent = getTheatreSubtitle(nextItem);
+    stagePrevBtn.disabled = index === 0;
+    stageNextBtn.disabled = index === theatreItems.length - 1;
+  }
+
+  stagePrevBtn.onclick = () => syncSelection(theatreIndex - 1);
+  stageNextBtn.onclick = () => syncSelection(theatreIndex + 1);
+
+  stage.appendChild(stagePrevBtn);
+  stage.appendChild(card);
+  stage.appendChild(stageNextBtn);
+
+  shell.appendChild(header);
+  shell.appendChild(stage);
+  modalContent.appendChild(shell);
+
+  syncSelection(theatreIndex);
+}
+
+function renderImages() {
+  const items = getFilteredImages();
+
+  closeCardMenu();
+  renderGrid(items);
+
+  const theatreModal = document.getElementById('theatre-modal');
+  if (!theatreModal.hidden) {
+    theatreItems = items.slice();
+
+    if (!theatreItems.length) {
+      closeTheatreModal();
+    } else {
+      theatreIndex = Math.max(0, Math.min(theatreIndex, theatreItems.length - 1));
+      renderTheatreModal();
+    }
+  }
+
+  updateToolbarLabels(items.length);
+  saveSettings();
+}
+
+function setFrame(src) {
+  currentFrame = src;
+  renderImages();
+}
+
+async function copyCardAsPNG(src, button, label = 'Copy to clipboard') {
+  try {
+    const canvas = document.createElement('canvas');
+
+    canvas.width = EXPORT_WIDTH * EXPORT_SCALE;
+    canvas.height = EXPORT_HEIGHT * EXPORT_SCALE;
+
+    const ctx = canvas.getContext('2d');
+
+    ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
+
+    const mainImg = await loadImage(src);
+    const frameImg = await loadImage(getActiveFrame());
+
+    const scale = Math.min(
+      EXPORT_WIDTH / mainImg.naturalWidth,
+      EXPORT_HEIGHT / mainImg.naturalHeight
+    );
+
+    const width = mainImg.naturalWidth * scale;
+    const height = mainImg.naturalHeight * scale;
+
+    const x = (EXPORT_WIDTH - width) / 2;
+    const y = (EXPORT_HEIGHT - height) / 2;
+
+    ctx.drawImage(mainImg, x, y, width, height);
+
+    ctx.globalAlpha = 0.75;
+    ctx.drawImage(frameImg, 0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
+    ctx.globalAlpha = 1;
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(result => {
+        if (!result) {
+          reject(new Error('Failed to create PNG blob.'));
+          return;
+        }
+        resolve(result);
+      }, 'image/png');
+    });
+
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': blob })
+    ]);
+
+    if (button) {
+      button.textContent = 'Copied';
+    }
+
+    showToast('COPIED IMAGE');
+
+    setTimeout(() => {
+      if (button) {
+        button.textContent = label;
+      }
+    }, 1200);
+
+  } catch (err) {
+    console.error(err);
+
+    if (button) {
+      button.textContent = 'Copy failed';
+    }
+
+    setTimeout(() => {
+      if (button) {
+        button.textContent = label;
+      }
+    }, 1600);
+  }
+}
+
+let toastTimer = null;
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.hidden = false;
+  toast.dataset.show = 'true';
+
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+    delete toast.dataset.show;
+    toastTimer = null;
+  }, 1400);
+}
+
+const cardMenuActions = [
+  {
+    id: 'copy',
+    label: '📋 Copy image',
+    run: async ({ item, button }) => {
+      await copyCardAsPNG(item.src, button, '📋 Copy image');
+    }
+  }
+];
+
+let activeCardMenu = null;
+let activeAdvancedMenu = null;
+
+function closeCardMenu() {
+  const cardMenu = document.getElementById('card-menu');
+  cardMenu.hidden = true;
+  cardMenu.innerHTML = '';
+  activeCardMenu = null;
+}
+
+function closeAdvancedMenu() {
+  const advancedMenu = document.getElementById('advanced-menu');
+  advancedMenu.hidden = true;
+  advancedMenu.innerHTML = '';
+  activeAdvancedMenu = null;
+}
+
+function positionFloatingMenu(menu, x, y) {
+  const menuWidth = menu.offsetWidth;
+  const menuHeight = menu.offsetHeight;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const left = Math.min(x, Math.max(8, viewportWidth - menuWidth - 8));
+  const top = Math.min(y, Math.max(8, viewportHeight - menuHeight - 8));
+
+  menu.style.left = `${Math.max(8, left)}px`;
+  menu.style.top = `${Math.max(8, top)}px`;
+}
+
+function getCardMenuTitle(item) {
+  const raw = String(item?.cardName || '').replace(/_/g, ' ').trim();
+  if (raw) return raw;
+
+  return String(item?.displayName || '').replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim();
+}
+
+function getCardMenuMetadata(item) {
+  const dexLabel = item?.isAceTrainer
+    ? 'ACE TRAINER'
+    : `#${String(item?.pokedex || '').padStart(4, '0')}`;
+
+  return [
+    { label: 'Set', value: item?.setLabel || 'All' },
+    { label: 'Dex #', value: dexLabel },
+    { label: 'Artist', value: item?.guestArtist || 'BASE PP' },
+    { label: 'Art', value: item?.artType || '' },
+    { label: 'Type', value: item?.setRelation || 'SET' }
+  ];
+}
+
+function getTheatreTitle(item) {
+  const raw = String(item?.cardName || '').replace(/_/g, ' ').trim();
+  if (raw) return raw;
+
+  return String(item?.displayName || '').replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim();
+}
+
+function getTheatreSubtitle(item) {
+  const artist = String(item?.guestArtist || 'BASE PP').trim() || 'BASE PP';
+  return `ARTIST: ${artist}`;
+}
+
+function openCardMenu(item, x, y, sourceItems = null) {
+  closeAllMenus();
+  const cardMenu = document.getElementById('card-menu');
+  cardMenu.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'context-menu-title';
+  title.textContent = getCardMenuTitle(item);
+  cardMenu.appendChild(title);
+
+  const metadata = document.createElement('div');
+  metadata.className = 'context-menu-metadata';
+
+  getCardMenuMetadata(item).forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'context-menu-meta-row';
+
+    const key = document.createElement('span');
+    key.className = 'context-menu-meta-key';
+    key.textContent = entry.label;
+
+    const value = document.createElement('span');
+    value.className = 'context-menu-meta-value';
+    value.textContent = entry.value;
+
+    row.appendChild(key);
+    row.appendChild(value);
+    metadata.appendChild(row);
+  });
+
+  cardMenu.appendChild(metadata);
+
+  const theatreButton = document.createElement('button');
+  theatreButton.type = 'button';
+  theatreButton.textContent = '🎭 Theatre Mode';
+  theatreButton.addEventListener('click', () => {
+    closeCardMenu();
+    const items = Array.isArray(sourceItems) && sourceItems.length ? sourceItems : [item];
+    openTheatreModal(items, item?.filteredIndex ?? 0);
+  });
+  cardMenu.appendChild(theatreButton);
+
+  cardMenuActions.forEach(action => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = action.label;
+    button.addEventListener('click', async () => {
+      await action.run({ item, button });
+      closeCardMenu();
+    });
+    cardMenu.appendChild(button);
+  });
+
+  activeCardMenu = { item };
+  cardMenu.hidden = false;
+  positionFloatingMenu(cardMenu, x, y);
+}
+
+function renderCardSizeModal() {
+  const options = document.getElementById('card-size-options');
+  options.innerHTML = '';
+
+  SIZE_OPTIONS.forEach(size => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.size = size;
+    button.textContent = getSizeLabel(size);
+    button.classList.toggle('selected', size === currentCardRows);
+    options.appendChild(button);
+  });
+}
+
+function closeCardSizeModal() {
+  const modal = document.getElementById('card-size-modal');
+  modal.hidden = true;
+  document.body.style.overflow = '';
+}
+
+function openCardSizeModal() {
+  closeAllMenus();
+  renderCardSizeModal();
+  const modal = document.getElementById('card-size-modal');
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function renderSortModal() {
+  const options = document.getElementById('sort-options');
+  options.innerHTML = '';
+
+  const sortChoices = [
+    { value: 'type', label: 'Default' },
+    { value: 'date-desc', label: 'Date modified (desc)' },
+    { value: 'random', label: 'Randomise' }
+  ];
+
+  sortChoices.forEach(choice => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.sort = choice.value;
+    button.textContent = choice.label;
+    button.classList.toggle('selected', choice.value === sortMode);
+    options.appendChild(button);
+  });
+}
+
+function closeSortModal() {
+  const modal = document.getElementById('sort-modal');
+  modal.hidden = true;
+  document.body.style.overflow = '';
+}
+
+function openSortModal() {
+  closeAllMenus();
+  renderSortModal();
+  const modal = document.getElementById('sort-modal');
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function openAdvancedMenu(x, y) {
+  closeAllMenus();
+
+  const advancedMenu = document.getElementById('advanced-menu');
+  advancedMenu.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'context-menu-title';
+  title.textContent = 'Advanced Settings';
+  advancedMenu.appendChild(title);
+
+  const sizeButton = document.createElement('button');
+  sizeButton.type = 'button';
+  sizeButton.textContent = '📏 Card sizing';
+  sizeButton.addEventListener('click', () => {
+    closeAdvancedMenu();
+    openCardSizeModal();
+  });
+  advancedMenu.appendChild(sizeButton);
+
+  const sortButton = document.createElement('button');
+  sortButton.type = 'button';
+  sortButton.textContent = '↕️ Sort';
+  sortButton.addEventListener('click', () => {
+    closeAdvancedMenu();
+    openSortModal();
+  });
+  advancedMenu.appendChild(sortButton);
+
+  const bleedButton = document.createElement('button');
+  bleedButton.type = 'button';
+  bleedButton.textContent = currentFrame === FRAME_FILE ? '🖼️ Show bleed' : '🖼️ Hide bleed';
+  bleedButton.addEventListener('click', () => {
+    setFrame(
+      currentFrame === FRAME_FILE
+        ? DOTTED_FRAME_FILE
+        : FRAME_FILE
+    );
+    closeAdvancedMenu();
+  });
+  advancedMenu.appendChild(bleedButton);
+
+  activeAdvancedMenu = { x, y };
+  advancedMenu.hidden = false;
+  positionFloatingMenu(advancedMenu, x, y);
+}
+
+async function loadImages() {
+  const galleryData = await loadGalleryData();
+  imageItems = galleryData.imageItems;
+  pokemonNameToDex = galleryData.pokemonNameToDex;
+
+  buildSetOptions();
+  buildArtistOptions();
+
+  if (!isValidSetFilter(setFilter)) {
+    setFilter = ALL_SETS_VALUE;
+  }
+
+  if (!artistOptions.some(option => option.value === artistFilter)) {
+    artistFilter = 'all';
+  }
+
+  renderSetMenu();
+  renderArtistMenu();
+  updateDropdownWidths();
+  document.getElementById('search-input').value = searchText;
+
+  renderImages();
+}
+
+loadSettings();
+applyGalleryLayoutSettings();
+
+document.getElementById('search-input').addEventListener('input', event => {
+  searchText = event.target.value;
+  updateSearchClearButton();
+  renderImages();
+});
+
+document.getElementById('search-clear').addEventListener('click', () => {
+  searchText = '';
+  const searchInput = document.getElementById('search-input');
+  searchInput.value = '';
+  updateSearchClearButton();
+  renderImages();
+  searchInput.focus();
+});
+
+document.getElementById('set-toggle').addEventListener('click', event => {
+  event.stopPropagation();
+  toggleMenu('set');
+});
+
+document.getElementById('artist-toggle').addEventListener('click', event => {
+  event.stopPropagation();
+  toggleMenu('artist');
+});
+
+document.getElementById('set-menu').addEventListener('click', event => {
+  const button = event.target.closest('button[data-set]');
+  if (!button) return;
+
+  setSetFilter(button.dataset.set);
+  closeAllMenus();
+});
+
+document.getElementById('artist-menu').addEventListener('click', event => {
+  const button = event.target.closest('button[data-artist]');
+  if (!button) return;
+
+  setArtistFilter(button.dataset.artist);
+  closeAllMenus();
+});
+
+document.getElementById('card-size-modal').addEventListener('click', event => {
+  const button = event.target.closest('button[data-size]');
+  if (button) {
+    setSize(button.dataset.size);
+    closeCardSizeModal();
+    return;
+  }
+
+  if (event.target.closest('[data-card-size-close]')) {
+    closeCardSizeModal();
+  }
+});
+
+document.getElementById('sort-modal').addEventListener('click', event => {
+  const button = event.target.closest('button[data-sort]');
+  if (button) {
+    setSortMode(button.dataset.sort);
+    closeSortModal();
+    return;
+  }
+
+  if (event.target.closest('[data-sort-close]')) {
+    closeSortModal();
+  }
+});
+
+document.getElementById('toolbar-title').addEventListener('contextmenu', event => {
+  event.preventDefault();
+  openAdvancedMenu(event.clientX, event.clientY);
+});
+
+document.getElementById('toolbar-title').addEventListener('click', event => {
+  if (!isMobileLayout()) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openAdvancedMenu(event.clientX, event.clientY);
+});
+
+document.getElementById('theatre-modal').addEventListener('click', event => {
+  if (event.target.closest('[data-theatre-close]')) {
+    closeTheatreModal();
+  }
+});
+
+document.getElementById('card-menu').addEventListener('click', event => {
+  event.stopPropagation();
+});
+
+document.getElementById('advanced-menu').addEventListener('click', event => {
+  event.stopPropagation();
+});
+
+document.addEventListener('click', event => {
+  if (!event.target.closest('.dropdown')) {
+    closeAllMenus();
+  }
+
+  if (!event.target.closest('#card-menu') && !event.target.closest('#advanced-menu')) {
+    closeCardMenu();
+    closeAdvancedMenu();
+  }
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    closeAllMenus();
+    closeCardMenu();
+    closeAdvancedMenu();
+    closeCardSizeModal();
+    closeSortModal();
+    closeTheatreModal();
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (activeCardMenu) {
+    const menu = document.getElementById('card-menu');
+    const rect = menu.getBoundingClientRect();
+    positionFloatingMenu(menu, rect.left, rect.top);
+  }
+
+  if (activeAdvancedMenu) {
+    const menu = document.getElementById('advanced-menu');
+    const rect = menu.getBoundingClientRect();
+    positionFloatingMenu(menu, rect.left, rect.top);
+  }
+
+  updateGalleryLayout();
+});
+
+loadImages();
+</script>
+
+</body>
+</html>
