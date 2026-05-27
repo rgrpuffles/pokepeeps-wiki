@@ -445,6 +445,7 @@ button.active {
 
 #grid {
   position: relative;
+  z-index: 1;
 }
 
 .grid-frame {
@@ -771,6 +772,7 @@ body[data-card-scale="0.5"] .card {
 }
 
 .gallery-page .toolbar {
+  z-index: 20;
   top: auto;
 }
 
