@@ -492,58 +492,58 @@ button.active {
 
 .grid-section-standard {
   --section-border: rgba(76, 118, 209, 0.34);
-  --section-surface-top: rgba(246, 241, 220, 0.94);
-  --section-surface-bottom: rgba(230, 222, 189, 0.96);
-  --section-grid-line-y: rgba(76, 118, 209, 0.08);
-  --section-grid-line-x: rgba(76, 118, 209, 0.05);
+  --section-surface-top: rgba(236, 245, 255, 0.96);
+  --section-surface-bottom: rgba(196, 221, 255, 0.98);
+  --section-grid-line-y: rgba(76, 118, 209, 0.1);
+  --section-grid-line-x: rgba(76, 118, 209, 0.06);
   --section-title-border: rgba(47, 69, 45, 0.28);
-  --section-title-top: rgba(252, 248, 229, 0.95);
-  --section-title-bottom: rgba(232, 225, 194, 0.98);
+  --section-title-top: rgba(245, 250, 255, 0.96);
+  --section-title-bottom: rgba(210, 228, 255, 0.99);
   --section-title-text: #24479a;
   --section-card-border: rgba(76, 118, 209, 0.16);
-  --section-card-top: rgba(253, 252, 246, 0.92);
-  --section-card-bottom: rgba(242, 239, 219, 0.9);
-  --section-card-shadow: rgba(35, 68, 145, 0.14);
-  --section-accent-deep: rgba(35, 68, 145, 0.42);
-  --section-card-line: rgba(76, 118, 209, 0.04);
+  --section-card-top: rgba(250, 253, 255, 0.94);
+  --section-card-bottom: rgba(228, 238, 255, 0.92);
+  --section-card-shadow: rgba(35, 68, 145, 0.16);
+  --section-accent-deep: rgba(35, 68, 145, 0.45);
+  --section-card-line: rgba(76, 118, 209, 0.05);
   --section-card-frame: rgba(76, 118, 209, 0.12);
 }
 
 .grid-section-full-art {
   --section-border: rgba(143, 99, 219, 0.34);
-  --section-surface-top: rgba(246, 241, 220, 0.94);
-  --section-surface-bottom: rgba(230, 222, 189, 0.96);
-  --section-grid-line-y: rgba(143, 99, 219, 0.08);
-  --section-grid-line-x: rgba(143, 99, 219, 0.05);
+  --section-surface-top: rgba(246, 236, 255, 0.96);
+  --section-surface-bottom: rgba(226, 205, 255, 0.98);
+  --section-grid-line-y: rgba(143, 99, 219, 0.1);
+  --section-grid-line-x: rgba(143, 99, 219, 0.06);
   --section-title-border: rgba(47, 69, 45, 0.28);
-  --section-title-top: rgba(251, 247, 238, 0.95);
-  --section-title-bottom: rgba(232, 225, 205, 0.98);
+  --section-title-top: rgba(250, 245, 255, 0.96);
+  --section-title-bottom: rgba(229, 212, 255, 0.99);
   --section-title-text: #6a3cc0;
   --section-card-border: rgba(143, 99, 219, 0.16);
-  --section-card-top: rgba(253, 252, 246, 0.92);
-  --section-card-bottom: rgba(243, 238, 249, 0.9);
-  --section-card-shadow: rgba(68, 31, 129, 0.14);
-  --section-accent-deep: rgba(87, 42, 159, 0.42);
-  --section-card-line: rgba(143, 99, 219, 0.04);
+  --section-card-top: rgba(252, 249, 255, 0.94);
+  --section-card-bottom: rgba(236, 226, 251, 0.92);
+  --section-card-shadow: rgba(68, 31, 129, 0.16);
+  --section-accent-deep: rgba(87, 42, 159, 0.45);
+  --section-card-line: rgba(143, 99, 219, 0.05);
   --section-card-frame: rgba(143, 99, 219, 0.12);
 }
 
 .grid-section-ace-trainer {
   --section-border: rgba(212, 167, 60, 0.34);
-  --section-surface-top: rgba(246, 241, 220, 0.94);
-  --section-surface-bottom: rgba(230, 222, 189, 0.96);
-  --section-grid-line-y: rgba(212, 167, 60, 0.08);
-  --section-grid-line-x: rgba(212, 167, 60, 0.05);
+  --section-surface-top: rgba(255, 248, 225, 0.96);
+  --section-surface-bottom: rgba(245, 216, 123, 0.98);
+  --section-grid-line-y: rgba(212, 167, 60, 0.1);
+  --section-grid-line-x: rgba(212, 167, 60, 0.06);
   --section-title-border: rgba(47, 69, 45, 0.28);
-  --section-title-top: rgba(253, 248, 231, 0.95);
-  --section-title-bottom: rgba(238, 224, 187, 0.98);
+  --section-title-top: rgba(255, 250, 232, 0.96);
+  --section-title-bottom: rgba(247, 225, 153, 0.99);
   --section-title-text: #9a7110;
   --section-card-border: rgba(212, 167, 60, 0.16);
-  --section-card-top: rgba(253, 252, 246, 0.92);
-  --section-card-bottom: rgba(249, 242, 219, 0.9);
-  --section-card-shadow: rgba(117, 78, 10, 0.14);
-  --section-accent-deep: rgba(132, 89, 10, 0.42);
-  --section-card-line: rgba(212, 167, 60, 0.04);
+  --section-card-top: rgba(255, 252, 241, 0.94);
+  --section-card-bottom: rgba(251, 236, 185, 0.92);
+  --section-card-shadow: rgba(117, 78, 10, 0.16);
+  --section-accent-deep: rgba(132, 89, 10, 0.45);
+  --section-card-line: rgba(212, 167, 60, 0.05);
   --section-card-frame: rgba(212, 167, 60, 0.12);
 }
 
