@@ -1220,10 +1220,10 @@ button.active {
 .theatre-card {
   position: relative;
   z-index: 1;
-  display: flex;
+  display: grid;
+  grid-template: "stack";
+  place-items: stretch;
   flex: 0 0 auto;
-  justify-content: center;
-  align-items: center;
   width: auto;
   height: auto;
   min-width: 0;
@@ -1231,12 +1231,15 @@ button.active {
   max-height: 100%;
   aspect-ratio: 530 / 720;
   border-radius: calc(var(--card-radius-x) + 2px) / calc(var(--card-radius-y) + 2px);
+  overflow: hidden;
   background: transparent;
   box-shadow: none;
 }
 
 .theatre-card img.main {
-  width: auto;
+  display: block;
+  grid-area: stack;
+  width: 100%;
   height: 100%;
   object-fit: contain;
 }
@@ -1248,8 +1251,14 @@ button.active {
 }
 
 .theatre-card img.overlay {
+  grid-area: stack;
+  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
   object-fit: contain;
+  border-radius: inherit;
 }
 
 .theatre-card .card-sheen {
