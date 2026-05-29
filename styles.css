@@ -898,7 +898,9 @@ button.active {
 
 .card-placeholder {
   z-index: var(--z-layer-base);
-  background: #5b6f4f;
+  background:
+    url("assets/images/card-back.PNG") center center / cover no-repeat,
+    #5b6f4f;
   opacity: 0;
   transition: opacity 0.16s ease;
   border-radius: inherit;
@@ -906,7 +908,6 @@ button.active {
 
 .card.is-loading .card-placeholder {
   opacity: 1;
-  animation: card-shimmer 1.25s linear infinite;
 }
 
 .card.is-loading .main {
@@ -985,16 +986,6 @@ button.active {
 
 .card-frame img.overlay {
   opacity: 1;
-}
-
-@keyframes card-shimmer {
-  0% {
-    background-position: 0 0, 0 0, 0 0;
-  }
-
-  100% {
-    background-position: 0 0, 0 0, 200% 0;
-  }
 }
 
 .card-wrap {
@@ -1209,11 +1200,9 @@ button.active {
 }
 
 .theatre-card .card-placeholder {
-  background: transparent;
-}
-
-.theatre-card .card-placeholder::before {
-  display: none;
+  background:
+    url("assets/images/card-back.PNG") center center / cover no-repeat,
+    transparent;
 }
 
 .theatre-card .card-frame {

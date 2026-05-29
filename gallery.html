@@ -804,6 +804,9 @@ function createTheatreCardElement(item) {
   card.className = 'card theatre-card is-loading';
   card.setAttribute('aria-busy', 'true');
 
+  const placeholder = document.createElement('div');
+  placeholder.className = 'card-placeholder';
+
   const img = document.createElement('img');
   img.alt = item.displayName;
   img.className = 'main';
@@ -828,12 +831,13 @@ function createTheatreCardElement(item) {
   const sheen = document.createElement('div');
   sheen.className = 'card-sheen';
 
+  card.appendChild(placeholder);
   card.appendChild(img);
   card.appendChild(frame);
   card.appendChild(sheen);
 
   card._mainImg = img;
-  card._placeholder = null;
+  card._placeholder = placeholder;
 
   return card;
 }
