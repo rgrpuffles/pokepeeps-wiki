@@ -1127,8 +1127,13 @@ button.active {
 .theatre-header-name {
   max-width: 100%;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-overflow: clip;
+  text-align: center;
+  line-height: 1.05;
 }
 
 .theatre-header-name {
