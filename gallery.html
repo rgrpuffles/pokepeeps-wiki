@@ -64,6 +64,10 @@
   </div>
   <div id="section-pills" class="section-pills" role="toolbar" aria-label="Card sections" hidden></div>
   <div id="gallery">
+    <div id="gallery-loading" class="gallery-loading" hidden aria-live="polite" aria-busy="true">
+      <div class="gallery-loading-spinner" aria-hidden="true"></div>
+      <div class="gallery-loading-label">LOADING</div>
+    </div>
   </div>
 </div>
 
@@ -107,6 +111,7 @@ let openDropdown = null;
 const GALLERY_BASE_CARD_WIDTH = 265;
 const GALLERY_CARD_FRAME_EXTRA = 12;
 const MOBILE_LAYOUT_QUERY = '(max-width: 760px)';
+const CARD_BACK_FILE = 'assets/images/card-back.PNG';
 const VISIBLE_SET_VALUES = ['SET_1_PPS', 'SET_2_SBS'];
 const SET_MENU_LABELS = {
   [ALL_SETS_VALUE]: 'ALL',
@@ -224,6 +229,37 @@ function updateTopMenuMetrics() {
   const topMenuBar = document.querySelector('.top-menu-bar');
   if (!topMenuBar) return;
   document.documentElement.style.setProperty('--top-menu-bar-height', `${topMenuBar.offsetHeight}px`);
+}
+
+function showGalleryLoading() {
+  const gallery = document.getElementById('gallery');
+  const loading = document.getElementById('gallery-loading');
+  if (!gallery || !loading) return;
+
+  loading.hidden = false;
+  gallery.classList.add('gallery-loading-state');
+  gallery.innerHTML = '';
+  gallery.appendChild(loading);
+}
+
+function hideGalleryLoading() {
+  const gallery = document.getElementById('gallery');
+  const loading = document.getElementById('gallery-loading');
+  if (loading) {
+    loading.hidden = true;
+  }
+  if (gallery) {
+    gallery.classList.remove('gallery-loading-state');
+  }
+}
+
+function preloadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
 function measureTextWidth(text, font) {
@@ -1470,29 +1506,38 @@ function openAdvancedMenu(x, y) {
 }
 
 async function loadImages() {
-  const galleryData = await loadGalleryData();
-  imageItems = galleryData.imageItems;
-  pokemonNameToDex = galleryData.pokemonNameToDex;
+  showGalleryLoading();
+  try {
+    await preloadImage(CARD_BACK_FILE);
 
-  loadSettings();
+    const galleryData = await loadGalleryData();
+    imageItems = galleryData.imageItems;
+    pokemonNameToDex = galleryData.pokemonNameToDex;
 
-  if (!isValidSetFilter(setFilter)) {
-    setFilter = ALL_SETS_VALUE;
-    saveSettings();
+    loadSettings();
+
+    if (!isValidSetFilter(setFilter)) {
+      setFilter = ALL_SETS_VALUE;
+      saveSettings();
+    }
+
+    if (!isValidArtistFilter(artistFilter)) {
+      artistFilter = 'all';
+      saveSettings();
+    }
+
+    syncSetTheme();
+    updateFilterToggleState();
+    renderSetMenu();
+    renderArtistMenu();
+    renderSetPackageBanner();
+    updateDropdownWidths();
+    hideGalleryLoading();
+    renderImages();
+  } catch (error) {
+    console.error('Failed to load gallery assets.', error);
+    hideGalleryLoading();
   }
-
-  if (!isValidArtistFilter(artistFilter)) {
-    artistFilter = 'all';
-    saveSettings();
-  }
-
-  syncSetTheme();
-  updateFilterToggleState();
-  renderSetMenu();
-  renderArtistMenu();
-  renderSetPackageBanner();
-  updateDropdownWidths();
-  renderImages();
 }
 
 document.getElementById('set-toggle').addEventListener('click', event => {
