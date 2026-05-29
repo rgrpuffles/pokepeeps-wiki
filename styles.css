@@ -858,11 +858,12 @@ button.active {
   align-items: center;
   gap: 8px;
   padding: 4px;
-  width: 100%;
+  width: auto;
   border-radius: calc(var(--card-radius-x) + var(--wrap-padding) + 3px) / calc(var(--card-radius-y) + var(--wrap-padding) + 3px);
   background: transparent;
   box-shadow: none;
   transition: transform 0.14s ease;
+  justify-self: center;
 }
 
 .card-wrap:hover {
@@ -874,7 +875,8 @@ button.active {
   grid-template: "stack";
   place-items: stretch;
   position: relative;
-  width: 100%;
+  width: auto;
+  flex: 0 0 auto;
   height: auto;
   aspect-ratio: var(--card-width) / var(--card-height);
   overflow: hidden;
@@ -888,6 +890,7 @@ button.active {
 
 .card {
   border-radius: calc(var(--card-radius-x) + 2px) / calc(var(--card-radius-y) + 2px);
+  justify-self: center;
 }
 
 .card > * {
@@ -911,10 +914,6 @@ button.active {
 }
 
 .card.is-loading .main {
-  opacity: 0;
-}
-
-.card.is-loading .card-frame {
   opacity: 0;
 }
 
@@ -952,7 +951,7 @@ button.active {
 }
 
 .card img.main,
-.card-frame {
+.card img.overlay {
   display: block;
   grid-area: stack;
   width: 100%;
@@ -960,7 +959,7 @@ button.active {
 }
 
 .card img.main,
-.card-frame img.overlay {
+.card img.overlay {
   display: block;
   width: 100%;
   height: 100%;
@@ -972,20 +971,14 @@ button.active {
   z-index: var(--z-layer-content);
 }
 
-.card-frame {
+.card img.overlay {
+  position: absolute;
+  inset: 0;
   z-index: var(--z-layer-card-frame);
   pointer-events: none;
   border-radius: inherit;
   overflow: hidden;
   opacity: 0.75;
-}
-
-.card-frame {
-  border-radius: calc(var(--card-radius-x) + 2px) / calc(var(--card-radius-y) + 2px);
-}
-
-.card-frame img.overlay {
-  opacity: 1;
 }
 
 .card-wrap {
@@ -1184,10 +1177,10 @@ button.active {
   position: relative;
   z-index: 1;
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   justify-content: center;
   align-items: center;
-  width: 100%;
+  width: auto;
   height: auto;
   min-width: 0;
   max-width: none;
@@ -1210,17 +1203,7 @@ button.active {
     transparent;
 }
 
-.theatre-card .card-frame {
-  position: absolute;
-  top: 0;
-  width: auto;
-  height: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-}
-
-.theatre-card .card-frame img.overlay {
+.theatre-card img.overlay {
   width: 100%;
   object-fit: contain;
 }

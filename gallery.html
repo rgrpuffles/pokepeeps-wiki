@@ -783,17 +783,12 @@ function createCardElement(item) {
   overlay.src = getActiveFrame();
   overlay.className = 'overlay';
 
-  const frame = document.createElement('div');
-  frame.className = 'card-frame';
-
-  frame.appendChild(overlay);
-
   const sheen = document.createElement('div');
   sheen.className = 'card-sheen';
 
   card.appendChild(placeholder);
   card.appendChild(img);
-  card.appendChild(frame);
+  card.appendChild(overlay);
   card.appendChild(sheen);
 
   return card;
@@ -824,16 +819,12 @@ function createTheatreCardElement(item) {
   overlay.src = getActiveFrame();
   overlay.className = 'overlay';
 
-  const frame = document.createElement('div');
-  frame.className = 'card-frame';
-  frame.appendChild(overlay);
-
   const sheen = document.createElement('div');
   sheen.className = 'card-sheen';
 
   card.appendChild(placeholder);
   card.appendChild(img);
-  card.appendChild(frame);
+  card.appendChild(overlay);
   card.appendChild(sheen);
 
   card._mainImg = img;
@@ -1219,10 +1210,10 @@ function renderImages() {
 function setFrame(src) {
   currentFrame = src === DOTTED_FRAME_FILE ? DOTTED_FRAME_FILE : FRAME_FILE;
   document.documentElement.dataset.frame = currentFrame === DOTTED_FRAME_FILE ? 'bleed' : 'solid';
-  document.querySelectorAll('.card-frame img.overlay').forEach(img => {
+  document.querySelectorAll('.card img.overlay, .theatre-card img.overlay').forEach(img => {
     img.src = currentFrame;
   });
-  const theatreOverlay = document.querySelector('#theatre-modal .card-frame img.overlay');
+  const theatreOverlay = document.querySelector('#theatre-modal .theatre-card img.overlay');
   if (theatreOverlay) {
     theatreOverlay.src = currentFrame;
   }
