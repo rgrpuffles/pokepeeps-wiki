@@ -985,7 +985,7 @@ button.active {
   padding: 4px;
   gap: 0;
   border-radius: calc(var(--card-radius-x) + 4px) / calc(var(--card-radius-y) + 4px);
-  width: 100%;
+  width: auto;
 }
 
 .card-wrap {
